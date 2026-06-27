@@ -1,8 +1,6 @@
 package com.example.pricescanner.ui.camera
 
-import PriceTagAnalyzer
 import android.util.Log
-import android.widget.Button
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -10,47 +8,61 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import com.example.pricescanner.viewmodel.PriceViewModel
 
 @Composable
-fun CameraScreen() {
+fun CameraScreen(
+    viewModel: PriceViewModel,
+    onNavigateToHistory: () -> Unit,
+    onNavigateToManual: () -> Unit
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // State to hold the most recently detected text
     var detectedText by remember { mutableStateOf("") }
     val previewView = remember { PreviewView(context) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. The Camera Preview
         AndroidView(
             factory = { previewView },
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. The Capture Button (Positioned at the bottom center)
+        // Capture Button
         Button(
             onClick = {
-                // We will handle the "Save to Database" logic here next!
-                Toast.makeText(context, "Captured: $detectedText", Toast.LENGTH_SHORT).show()
+                if (detectedText.isNotEmpty()) {
+                    viewModel.savePriceEntry(detectedText)
+                    Toast.makeText(context, "Saved to ${viewModel.currentStoreName}", Toast.LENGTH_SHORT).show()
+                }
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -59,27 +71,54 @@ fun CameraScreen() {
             Text("Capture Price")
         }
 
-        // 3. Optional: Visual overlay to show what it's currently reading
-        Text(
-            text = "Seeing: $detectedText",
-            color = Color.White,
+        // Navigation Buttons (History & Manual Entry)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Manual Entry FAB
+            FloatingActionButton(
+                onClick = onNavigateToManual,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Icon(Icons.Default.Edit, contentDescription = "Manual Entry")
+            }
+
+            // History FAB
+            FloatingActionButton(
+                onClick = onNavigateToHistory
+            ) {
+                Icon(Icons.Default.List, contentDescription = "History")
+            }
+        }
+
+        // Overlay showing current store and reading
+        Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 48.dp)
                 .background(Color.Black.copy(alpha = 0.5f))
-        )
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "Store: ${viewModel.currentStoreName}", color = Color.White)
+            Text(text = "Seeing: $detectedText", color = Color.Yellow)
+            TextButton(onClick = { viewModel.openStoreDialog() }) {
+                Text("Change Store", style = MaterialTheme.typography.labelSmall, color = Color.White)
+            }
+        }
     }
 
-    // CameraX Setup (LaunchedEffect)
     LaunchedEffect(Unit) {
         val cameraProvider = ProcessCameraProvider.getInstance(context).get()
         val preview = Preview.Builder().build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
 
-        // Connect the Analyzer to our State
         val analyzer = PriceTagAnalyzer { text ->
-            detectedText = text // This updates our UI variable in real-time
+            detectedText = text
         }
 
         val imageAnalysis = ImageAnalysis.Builder()

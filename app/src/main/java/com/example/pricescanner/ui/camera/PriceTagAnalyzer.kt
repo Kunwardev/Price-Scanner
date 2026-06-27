@@ -1,3 +1,5 @@
+package com.example.pricescanner.ui.camera
+
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage

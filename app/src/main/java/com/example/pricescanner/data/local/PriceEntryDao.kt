@@ -1,9 +1,10 @@
 package com.example.pricescanner.data.local
 
-import com.example.pricescanner.data.local.PriceEntry
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PriceEntryDao {
@@ -13,5 +14,13 @@ interface PriceEntryDao {
 
     // Get everything we've ever scanned
     @Query("SELECT * FROM price_history ORDER BY id DESC")
-    fun getAllItems(): List<PriceEntry>
+    fun getAllItems() : Flow<List<PriceEntry>>
+
+    // Clear all entries
+    @Query("DELETE FROM price_history")
+    suspend fun deleteAll()
+
+    // Delete a specific entry
+    @Delete
+    suspend fun deleteItem(item: PriceEntry)
 }

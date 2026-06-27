@@ -7,8 +7,11 @@ import androidx.room.PrimaryKey
 data class PriceEntry(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val storeName: String, // Where you saw it
-    val itemName: String,  // What it is (Milk, Headphones, Drill, etc.)
-    val price: Double,      // How much it costs
-    val category: String = "General" // Optional: helps you filter later!
+    val storeName: String,
+    val itemName: String,
+    val price: Double,
+    val quantity: Double = 1.0,
+    val unit: String = "unit", // oz, lb, count, etc.
+    val pricePerUnit: Double = price,
+    val category: String = "General"
 )
