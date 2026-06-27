@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,6 +18,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.pricescanner.viewmodel.PriceViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,12 +41,17 @@ fun ManualEntryScreen(
     onBack: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("1") }
+    var priceInput by remember { mutableStateOf("") }
+    var quantityInput by remember { mutableStateOf("1") }
     var unit by remember { mutableStateOf("oz") }
     var expanded by remember { mutableStateOf(false) }
 
     val units = listOf("oz", "lb", "kg", "g", "count", "ml", "L")
+
+    // Parse values safely for logic use
+    val priceVal = priceInput.toDoubleOrNull() ?: 0.0
+    val quantityVal = quantityInput.toDoubleOrNull() ?: 1.0
+    val calcPrice = if (quantityVal > 0) priceVal / quantityVal else 0.0
 
     Scaffold(
         topBar = {
@@ -77,8 +83,8 @@ fun ManualEntryScreen(
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = price,
-                    onValueChange = { price = it },
+                    value = priceInput,
+                    onValueChange = { priceInput = it },
                     label = { Text("Total Price ($)") },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -90,8 +96,8 @@ fun ManualEntryScreen(
 
             Row(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = quantity,
-                    onValueChange = { quantity = it },
+                    value = quantityInput,
+                    onValueChange = { quantityInput = it },
                     label = { Text("Quantity") },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
@@ -110,7 +116,7 @@ fun ManualEntryScreen(
                         readOnly = true,
                         label = { Text("Unit") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor()
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
@@ -133,21 +139,19 @@ fun ManualEntryScreen(
 
             Button(
                 onClick = {
-                    val p = price.toDoubleOrNull() ?: 0.0
-                    val q = quantity.toDoubleOrNull() ?: 1.0
-                    viewModel.saveManualEntry(name, p, q, unit)
+                    viewModel.saveManualEntry(name, priceVal, quantityVal, unit)
                     onBack()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = name.isNotBlank() && price.isNotBlank()
+                enabled = name.isNotBlank() && priceInput.isNotBlank()
             ) {
                 Text("Save to Database")
             }
             
-            val calcPrice = (price.toDoubleOrNull() ?: 0.0) / (quantity.toDoubleOrNull() ?: 1.0)
-            if (calcPrice > 0 && calcPrice != p) {
+            if (calcPrice > 0 && quantityVal != 1.0) {
+                val formattedCalcPrice = String.format(Locale.US, "%.2f", calcPrice)
                 Text(
-                    text = "Calculated: $${String.format("%.2f", calcPrice)} per $unit",
+                    text = "Calculated: $$formattedCalcPrice per $unit",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 8.dp),
                     color = MaterialTheme.colorScheme.secondary
