@@ -5,10 +5,11 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [PriceEntry::class], version = 2, exportSchema = false)
+@Database(entities = [PriceEntry::class, ProductLookup::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun priceEntryDao(): PriceEntryDao
+    abstract fun productLookupDao(): ProductLookupDao
 
     companion object {
         @Volatile
@@ -21,7 +22,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "price_history_database"
                 )
-                .fallbackToDestructiveMigration() // Automatically wipes the old DB when the schema changes
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance

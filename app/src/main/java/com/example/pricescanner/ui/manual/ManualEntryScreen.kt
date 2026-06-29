@@ -38,9 +38,10 @@ import java.util.Locale
 @Composable
 fun ManualEntryScreen(
     viewModel: PriceViewModel,
+    initialName: String = "",
     onBack: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialName) }
     var priceInput by remember { mutableStateOf("") }
     var quantityInput by remember { mutableStateOf("1") }
     var unit by remember { mutableStateOf("oz") }

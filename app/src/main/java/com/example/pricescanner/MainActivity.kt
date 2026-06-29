@@ -2,6 +2,7 @@ package com.example.pricescanner
 
 import android.Manifest
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,9 +20,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.pricescanner.ui.camera.BarcodeScannerScreen
 import com.example.pricescanner.ui.camera.CameraScreen
 import com.example.pricescanner.ui.history.HistoryScreen
 import com.example.pricescanner.ui.manual.ManualEntryScreen
@@ -33,7 +37,10 @@ class MainActivity : ComponentActivity() {
     sealed class Screen(val route: String) {
         object Camera : Screen("camera_screen")
         object History : Screen("history_screen")
-        object Manual : Screen("manual_screen")
+        object Barcode : Screen("barcode_screen")
+        object Manual : Screen("manual_screen?name={name}") {
+            fun createRoute(name: String = "") = "manual_screen?name=$name"
+        }
     }
     
     private lateinit var viewModel: PriceViewModel
@@ -41,15 +48,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Since PriceViewModel is an AndroidViewModel, we use the default provider.
-        // It automatically handles passing the Application context.
         viewModel = ViewModelProvider(this)[PriceViewModel::class.java]
 
         val requestPermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
-                // Permission allowed!
+                Log.d("MainActivity", "Camera permission granted")
             }
         }
 
@@ -79,7 +84,8 @@ fun AppNavigation(viewModel: PriceViewModel) {
             CameraScreen(
                 viewModel = viewModel,
                 onNavigateToHistory = { navController.navigate(MainActivity.Screen.History.route) },
-                onNavigateToManual = { navController.navigate(MainActivity.Screen.Manual.route) }
+                onNavigateToManual = { navController.navigate(MainActivity.Screen.Manual.createRoute()) },
+                onNavigateToBarcode = { navController.navigate(MainActivity.Screen.Barcode.route) }
             )
         }
 
@@ -90,9 +96,30 @@ fun AppNavigation(viewModel: PriceViewModel) {
             )
         }
 
-        composable(MainActivity.Screen.Manual.route) {
+        composable(
+            route = MainActivity.Screen.Manual.route,
+            arguments = listOf(navArgument("name") { 
+                type = NavType.StringType
+                defaultValue = ""
+                nullable = true
+            })
+        ) { backStackEntry ->
+            val name = backStackEntry.arguments?.getString("name") ?: ""
             ManualEntryScreen(
                 viewModel = viewModel,
+                initialName = name,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(MainActivity.Screen.Barcode.route) {
+            BarcodeScannerScreen(
+                onProductFound = { name ->
+                    // Jump to Manual entry with the name pre-filled
+                    navController.navigate(MainActivity.Screen.Manual.createRoute(name)) {
+                        popUpTo(MainActivity.Screen.Barcode.route) { inclusive = true }
+                    }
+                },
                 onBack = { navController.popBackStack() }
             )
         }

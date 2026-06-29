@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -42,7 +43,8 @@ import com.example.pricescanner.viewmodel.PriceViewModel
 fun CameraScreen(
     viewModel: PriceViewModel,
     onNavigateToHistory: () -> Unit,
-    onNavigateToManual: () -> Unit
+    onNavigateToManual: () -> Unit,
+    onNavigateToBarcode: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -71,13 +73,21 @@ fun CameraScreen(
             Text("Capture Price")
         }
 
-        // Navigation Buttons (History & Manual Entry)
+        // Navigation Buttons (Column on the right)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // NEW: Barcode Scanner FAB
+            FloatingActionButton(
+                onClick = onNavigateToBarcode,
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            ) {
+                Icon(Icons.Default.Search, contentDescription = "Scan Barcode")
+            }
+
             // Manual Entry FAB
             FloatingActionButton(
                 onClick = onNavigateToManual,

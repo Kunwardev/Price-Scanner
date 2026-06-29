@@ -8,14 +8,18 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pricescanner.data.local.AppDatabase
 import com.example.pricescanner.data.local.PriceEntry
+import com.example.pricescanner.data.local.ProductLookup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PriceViewModel(application: Application) : AndroidViewModel(application) {
-    private val dao = AppDatabase.getDatabase(application).priceEntryDao()
+    private val database = AppDatabase.getDatabase(application)
+    private val priceDao = database.priceEntryDao()
+    private val productDao = database.productLookupDao()
 
-    val allPrices: Flow<List<PriceEntry>> = dao.getAllItems()
+    val allPrices: Flow<List<PriceEntry>> = priceDao.getAllItems()
 
     var currentStoreName by mutableStateOf("")
         private set
@@ -33,16 +37,55 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Intelligently parses raw text from the scanner.
+     * Looks up a product name by barcode from the database.
+     */
+    suspend fun getProductName(barcode: String): String? {
+        return withContext(Dispatchers.IO) {
+            productDao.getProductByBarcode(barcode)?.productName
+        }
+    }
+
+    /**
+     * Saves or updates a barcode-to-product mapping.
+     */
+    fun saveProductMapping(barcode: String, name: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            productDao.insertProduct(ProductLookup(barcode, name))
+        }
+    }
+
+    /**
+     * Advanced parsing logic to correctly identify the full price (e.g., 16.99)
+     * and separate it from the product name.
      */
     fun savePriceEntry(rawText: String) {
-        val priceRegex = Regex("""\d+[.,]\d{1,2}|\d+""")
-        val priceMatch = priceRegex.find(rawText)
-        val priceValue = priceMatch?.value?.replace(",", ".")?.toDoubleOrNull() ?: 0.0
+        val potentialPrices = Regex("""\d+\s*[.,\s]\s*\d{1,2}|\d+""").findAll(rawText)
+            .map { it.value }
+            .toList()
+
+        if (potentialPrices.isEmpty()) return
+
+        val priceMatch = potentialPrices
+            .filter { it.contains(Regex("[.,]")) || (it.contains(" ") && it.trim().split(" ").last().length == 2) }
+            .map { it.replace(Regex("""\s+"""), "").replace(",", ".") }
+            .maxByOrNull { it.toDoubleOrNull() ?: 0.0 }
+            ?: potentialPrices.maxByOrNull { it.toDoubleOrNull() ?: 0.0 }
+
+        val priceValue = priceMatch?.toDoubleOrNull() ?: 0.0
 
         var itemName = rawText
-            .replace(priceRegex, "")
+        if (priceMatch != null) {
+            val originalMatch = potentialPrices.find { 
+                it.replace(Regex("""\s+"""), "").replace(",", ".") == priceMatch 
+            }
+            if (originalMatch != null) {
+                itemName = rawText.replace(originalMatch, "")
+            }
+        }
+
+        itemName = itemName
             .replace("$", "")
+            .replace(Regex("""\d+\s*(oz|lb|kg|g|ml|L)\b""", RegexOption.IGNORE_CASE), "")
             .replace("/lb", "", true)
             .replace("/kg", "", true)
             .replace(Regex("""\s+"""), " ")
@@ -54,17 +97,14 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
             itemName = itemName,
             storeName = currentStoreName.ifBlank { "Unknown Store" },
             price = priceValue,
-            pricePerUnit = priceValue // Default for raw scans
+            pricePerUnit = priceValue
         )
 
         viewModelScope.launch(Dispatchers.IO) {
-            dao.insertItem(newEntry)
+            priceDao.insertItem(newEntry)
         }
     }
 
-    /**
-     * Saves a manual entry with specific quantity and calculates price per unit.
-     */
     fun saveManualEntry(name: String, price: Double, quantity: Double, unit: String) {
         val calculatedPricePerUnit = if (quantity > 0) price / quantity else price
         
@@ -78,19 +118,19 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
         )
 
         viewModelScope.launch(Dispatchers.IO) {
-            dao.insertItem(newEntry)
+            priceDao.insertItem(newEntry)
         }
     }
 
     fun clearHistory() {
         viewModelScope.launch(Dispatchers.IO) {
-            dao.deleteAll()
+            priceDao.deleteAll()
         }
     }
 
     fun deleteEntry(entry: PriceEntry) {
         viewModelScope.launch(Dispatchers.IO) {
-            dao.deleteItem(entry)
+            priceDao.deleteItem(entry)
         }
     }
 }
