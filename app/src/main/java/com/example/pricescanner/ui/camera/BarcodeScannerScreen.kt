@@ -1,5 +1,6 @@
 package com.example.pricescanner.ui.camera
 
+import android.text.format.DateUtils
 import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -16,11 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.pricescanner.viewmodel.PriceViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,12 +35,24 @@ fun BarcodeScannerScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val previewView = remember { PreviewView(context) }
+    
     var detectedCode by remember { mutableStateOf("") }
     var productName by remember { mutableStateOf("") }
     var customName by remember { mutableStateOf("") }
     var isUnknownItem by remember { mutableStateOf(false) }
 
-    // Check database when a code is detected
+    // Observe price history for the identified product
+    val history by produceState(initialValue = emptyList(), productName) {
+        if (productName.isNotEmpty() && !isUnknownItem) {
+            viewModel.getComparisonResults(productName).collect { value = it }
+        } else {
+            value = emptyList()
+        }
+    }
+
+    val currentStoreEntry = history.find { it.storeName.equals(viewModel.currentStoreName, ignoreCase = true) }
+    val otherStoresHistory = history.filter { !it.storeName.equals(viewModel.currentStoreName, ignoreCase = true) }
+
     LaunchedEffect(detectedCode) {
         if (detectedCode.isNotEmpty()) {
             val dbName = viewModel.getProductName(detectedCode)
@@ -69,7 +84,6 @@ fun BarcodeScannerScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Scanning area guide
             Box(
                 modifier = Modifier
                     .size(200.dp)
@@ -81,11 +95,11 @@ fun BarcodeScannerScreen(
                 Card(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 48.dp)
+                        .fillMaxWidth()
                         .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(text = "Code: $detectedCode", style = MaterialTheme.typography.labelSmall)
                         
                         if (isUnknownItem) {
@@ -93,28 +107,69 @@ fun BarcodeScannerScreen(
                             OutlinedTextField(
                                 value = customName,
                                 onValueChange = { customName = it },
-                                label = { Text("What is this product?") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
+                                label = { Text("Product Name") },
+                                modifier = Modifier.fillMaxWidth()
                             )
                         } else {
-                            Text(text = productName, style = MaterialTheme.typography.headlineSmall)
+                            Text(text = productName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            
+                            if (currentStoreEntry != null) {
+                                val currentPrice = String.format(Locale.US, "%.2f", currentStoreEntry.price)
+                                val relativeTime = DateUtils.getRelativeTimeSpanString(
+                                    currentStoreEntry.timestamp,
+                                    System.currentTimeMillis(),
+                                    DateUtils.MINUTE_IN_MILLIS
+                                ).toString()
+                                
+                                Text(
+                                    text = "Last seen here ($relativeTime): $$currentPrice",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         
                         Button(
                             onClick = { 
                                 val finalName = if (isUnknownItem) customName else productName
                                 if (isUnknownItem && customName.isNotBlank()) {
-                                    // Remember this product for next time!
                                     viewModel.saveProductMapping(detectedCode, customName)
                                 }
                                 onProductFound(finalName) 
                             },
+                            modifier = Modifier.fillMaxWidth(),
                             enabled = !isUnknownItem || customName.isNotBlank()
                         ) {
-                            Text("Set Price for this Item")
+                            Text(if (currentStoreEntry != null) "Update Price" else "Set New Price")
+                        }
+
+                        // Display comparison BELOW the button
+                        if (otherStoresHistory.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text("Prices in other stores:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                            otherStoresHistory.take(3).forEach { entry ->
+                                val priceText = String.format(Locale.US, "%.2f", entry.pricePerUnit)
+                                val entryTime = DateUtils.getRelativeTimeSpanString(
+                                    entry.timestamp,
+                                    System.currentTimeMillis(),
+                                    DateUtils.MINUTE_IN_MILLIS
+                                ).toString()
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(entry.storeName, style = MaterialTheme.typography.bodySmall)
+                                        Text(entryTime, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    }
+                                    Text("$$priceText/${entry.unit}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
@@ -124,20 +179,12 @@ fun BarcodeScannerScreen(
 
     LaunchedEffect(Unit) {
         val cameraProvider = ProcessCameraProvider.getInstance(context).get()
-        val preview = Preview.Builder().build().also {
-            it.setSurfaceProvider(previewView.surfaceProvider)
-        }
-
-        val analyzer = BarcodeAnalyzer { code ->
-            detectedCode = code
-        }
-
+        val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
+        val analyzer = BarcodeAnalyzer { code -> detectedCode = code }
         val imageAnalysis = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
-            .also {
-                it.setAnalyzer(ContextCompat.getMainExecutor(context), analyzer)
-            }
+            .also { it.setAnalyzer(ContextCompat.getMainExecutor(context), analyzer) }
 
         try {
             cameraProvider.unbindAll()

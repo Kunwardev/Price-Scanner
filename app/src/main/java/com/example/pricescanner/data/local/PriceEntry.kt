@@ -11,7 +11,8 @@ data class PriceEntry(
     val itemName: String,
     val price: Double,
     val quantity: Double = 1.0,
-    val unit: String = "unit", // oz, lb, count, etc.
+    val unit: String = "unit",
     val pricePerUnit: Double = price,
-    val category: String = "General"
+    val category: String = "General",
+    val timestamp: Long = System.currentTimeMillis()
 )

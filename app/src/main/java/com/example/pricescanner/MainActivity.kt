@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.pricescanner.ui.camera.BarcodeScannerScreen
 import com.example.pricescanner.ui.camera.CameraScreen
+import com.example.pricescanner.ui.history.ComparisonScreen
 import com.example.pricescanner.ui.history.HistoryScreen
 import com.example.pricescanner.ui.manual.ManualEntryScreen
 import com.example.pricescanner.ui.theme.PriceScannerTheme
@@ -36,10 +37,13 @@ class MainActivity : ComponentActivity() {
 
     sealed class Screen(val route: String) {
         object Camera : Screen("camera_screen")
-        object History : Screen("history_screen")
         object Barcode : Screen("barcode_screen")
+        object History : Screen("history_screen")
         object Manual : Screen("manual_screen?name={name}") {
             fun createRoute(name: String = "") = "manual_screen?name=$name"
+        }
+        object Comparison : Screen("comparison_screen/{itemName}") {
+            fun createRoute(itemName: String) = "comparison_screen/$itemName"
         }
     }
     
@@ -83,16 +87,22 @@ fun AppNavigation(viewModel: PriceViewModel) {
         composable(MainActivity.Screen.Camera.route) {
             CameraScreen(
                 viewModel = viewModel,
-                onNavigateToHistory = { navController.navigate(MainActivity.Screen.History.route) },
                 onNavigateToManual = { navController.navigate(MainActivity.Screen.Manual.createRoute()) },
-                onNavigateToBarcode = { navController.navigate(MainActivity.Screen.Barcode.route) }
+                onNavigateToBarcode = { navController.navigate(MainActivity.Screen.Barcode.route) },
+                onNavigateToHistory = { navController.navigate(MainActivity.Screen.History.route) },
+                onNavigateToComparison = { itemName ->
+                    navController.navigate(MainActivity.Screen.Comparison.createRoute(itemName))
+                }
             )
         }
 
         composable(MainActivity.Screen.History.route) {
             HistoryScreen(
                 viewModel = viewModel,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onItemClick = { itemName ->
+                    navController.navigate(MainActivity.Screen.Comparison.createRoute(itemName))
+                }
             )
         }
 
@@ -108,18 +118,35 @@ fun AppNavigation(viewModel: PriceViewModel) {
             ManualEntryScreen(
                 viewModel = viewModel,
                 initialName = name,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onSaveSuccess = { itemName ->
+                    navController.navigate(MainActivity.Screen.Comparison.createRoute(itemName)) {
+                        popUpTo(MainActivity.Screen.Camera.route)
+                    }
+                }
             )
         }
 
         composable(MainActivity.Screen.Barcode.route) {
             BarcodeScannerScreen(
+                viewModel = viewModel,
                 onProductFound = { name ->
-                    // Jump to Manual entry with the name pre-filled
                     navController.navigate(MainActivity.Screen.Manual.createRoute(name)) {
                         popUpTo(MainActivity.Screen.Barcode.route) { inclusive = true }
                     }
                 },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = MainActivity.Screen.Comparison.route,
+            arguments = listOf(navArgument("itemName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val itemName = backStackEntry.arguments?.getString("itemName") ?: ""
+            ComparisonScreen(
+                viewModel = viewModel,
+                itemName = itemName,
                 onBack = { navController.popBackStack() }
             )
         }
