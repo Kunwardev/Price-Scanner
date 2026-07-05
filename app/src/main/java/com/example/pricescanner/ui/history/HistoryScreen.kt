@@ -137,7 +137,8 @@ fun HistoryScreen(
                     PriceItemCard(
                         entry = entry,
                         onClick = { onItemClick(entry.itemName) },
-                        onDelete = { viewModel.deleteEntry(entry) }
+                        onDelete = { viewModel.deleteEntry(entry) },
+                        viewModel = viewModel
                     )
                 }
             }
@@ -146,7 +147,7 @@ fun HistoryScreen(
 }
 
 @Composable
-fun PriceItemCard(entry: PriceEntry, onClick: () -> Unit, onDelete: () -> Unit) {
+fun PriceItemCard(entry: PriceEntry, onClick: () -> Unit, onDelete: () -> Unit, viewModel: PriceViewModel) {
     val relativeTime = DateUtils.getRelativeTimeSpanString(
         entry.timestamp,
         System.currentTimeMillis(),
@@ -188,8 +189,9 @@ fun PriceItemCard(entry: PriceEntry, onClick: () -> Unit, onDelete: () -> Unit) 
                     color = MaterialTheme.colorScheme.primary
                 )
                 
+                val displayPrice = viewModel.getDisplayNormalizedPrice(entry.pricePerUnit, entry.unit)
                 Text(
-                    text = "$${String.format("%.2f", entry.pricePerUnit)}/${entry.unit}",
+                    text = displayPrice,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )

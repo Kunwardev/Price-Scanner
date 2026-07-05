@@ -5,11 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [PriceEntry::class, ProductLookup::class], version = 4, exportSchema = false)
+@Database(entities = [PriceEntry::class, ProductLookup::class, ShoppingListItem::class], version = 5, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun priceEntryDao(): PriceEntryDao
     abstract fun productLookupDao(): ProductLookupDao
+    abstract fun shoppingListDao(): ShoppingListDao
 
     companion object {
         @Volatile

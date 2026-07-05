@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.pricescanner.data.local.PriceEntry
 import com.example.pricescanner.viewmodel.PriceViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,11 +57,8 @@ fun ComparisonScreen(
                 ) {
                     items(comparisonList) { entry ->
                         ComparisonCard(
-                            storeName = entry.storeName,
-                            price = entry.price,
-                            unitPrice = entry.pricePerUnit,
-                            unit = entry.unit,
-                            timestamp = entry.timestamp
+                            entry = entry,
+                            viewModel = viewModel
                         )
                     }
                 }
@@ -70,9 +68,9 @@ fun ComparisonScreen(
 }
 
 @Composable
-fun ComparisonCard(storeName: String, price: Double, unitPrice: Double, unit: String, timestamp: Long) {
+fun ComparisonCard(entry: PriceEntry, viewModel: PriceViewModel) {
     val relativeTime = DateUtils.getRelativeTimeSpanString(
-        timestamp,
+        entry.timestamp,
         System.currentTimeMillis(),
         DateUtils.MINUTE_IN_MILLIS
     ).toString()
@@ -88,20 +86,22 @@ fun ComparisonCard(storeName: String, price: Double, unitPrice: Double, unit: St
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = storeName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(text = entry.storeName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
                     text = relativeTime,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
+                
+                val displayPrice = viewModel.getDisplayNormalizedPrice(entry.pricePerUnit, entry.unit)
                 Text(
-                    text = "$${String.format("%.2f", unitPrice)} per $unit",
+                    text = displayPrice,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
             Text(
-                text = "$${String.format("%.2f", price)}",
+                text = "$${String.format("%.2f", entry.price)}",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

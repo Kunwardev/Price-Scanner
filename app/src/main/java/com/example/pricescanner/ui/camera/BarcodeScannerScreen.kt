@@ -152,7 +152,7 @@ fun BarcodeScannerScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             Text("Prices in other stores:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                             otherStoresHistory.take(3).forEach { entry ->
-                                val priceText = String.format(Locale.US, "%.2f", entry.pricePerUnit)
+                                val displayPrice = viewModel.getDisplayNormalizedPrice(entry.pricePerUnit, entry.unit)
                                 val entryTime = DateUtils.getRelativeTimeSpanString(
                                     entry.timestamp,
                                     System.currentTimeMillis(),
@@ -167,7 +167,7 @@ fun BarcodeScannerScreen(
                                         Text(entry.storeName, style = MaterialTheme.typography.bodySmall)
                                         Text(entryTime, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                                     }
-                                    Text("$$priceText/${entry.unit}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                    Text(displayPrice, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

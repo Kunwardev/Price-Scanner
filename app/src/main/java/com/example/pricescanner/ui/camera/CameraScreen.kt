@@ -132,9 +132,14 @@ fun CameraScreen(
                                 DateUtils.MINUTE_IN_MILLIS
                             ).toString()
                             
+                            val displayPrice = viewModel.getDisplayNormalizedPrice(entry.pricePerUnit, entry.unit)
+
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${entry.storeName} ($entryTime)", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                                Text("\$${String.format(Locale.US, "%.2f", entry.price)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(entry.storeName, style = MaterialTheme.typography.bodySmall)
+                                    Text(entryTime, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                }
+                                Text(displayPrice, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

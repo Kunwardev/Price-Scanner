@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.pricescanner.data.local.AppDatabase
 import com.example.pricescanner.data.local.PriceEntry
 import com.example.pricescanner.data.local.ProductLookup
+import com.example.pricescanner.data.local.ShoppingListItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -19,9 +20,11 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
     private val priceDao = database.priceEntryDao()
     private val productDao = database.productLookupDao()
+    private val shoppingListDao = database.shoppingListDao()
     private val sharedPrefs = application.getSharedPreferences("price_scanner_prefs", Context.MODE_PRIVATE)
 
     val allPrices: Flow<List<PriceEntry>> = priceDao.getAllItems()
+    val shoppingList: Flow<List<ShoppingListItem>> = shoppingListDao.getAllItems()
 
     var currentStoreName by mutableStateOf(sharedPrefs.getString("last_store", "") ?: "")
         private set
@@ -37,6 +40,31 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openStoreDialog() {
         showStoreDialog = true
+    }
+
+    // Shopping List Operations
+    fun addShoppingItem(name: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            shoppingListDao.insertItem(ShoppingListItem(name = name))
+        }
+    }
+
+    fun toggleShoppingItem(item: ShoppingListItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            shoppingListDao.updateItem(item.copy(isChecked = !item.isChecked))
+        }
+    }
+
+    fun deleteShoppingItem(item: ShoppingListItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            shoppingListDao.deleteItem(item)
+        }
+    }
+
+    fun clearShoppingList() {
+        viewModelScope.launch(Dispatchers.IO) {
+            shoppingListDao.deleteAll()
+        }
     }
 
     fun getComparisonResults(itemName: String): Flow<List<PriceEntry>> {
@@ -55,9 +83,6 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Helper to parse raw text into Item Name and Price.
-     */
     fun parseInfoFromText(rawText: String): Pair<String, Double> {
         val potentialPrices = Regex("""\d+\s*[.,\s]\s*\d{1,2}|\d+""").findAll(rawText)
             .map { it.value }
@@ -95,9 +120,6 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
         return itemName to priceValue
     }
 
-    /**
-     * Checks if an entry already exists for this item in the current store.
-     */
     suspend fun checkForExistingEntry(rawText: String): PriceEntry? {
         val parsed = parseInfoFromText(rawText)
         return withContext(Dispatchers.IO) {
@@ -113,16 +135,14 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
             if (existing != null) {
                 priceDao.updateItem(existing.copy(
                     price = priceValue, 
-                    pricePerUnit = priceValue,
-                    timestamp = System.currentTimeMillis()
+                    pricePerUnit = priceValue
                 ))
             } else {
                 val newEntry = PriceEntry(
                     itemName = itemName,
                     storeName = currentStoreName.ifBlank { "Unknown Store" },
                     price = priceValue,
-                    pricePerUnit = priceValue,
-                    timestamp = System.currentTimeMillis()
+                    pricePerUnit = priceValue
                 )
                 priceDao.insertItem(newEntry)
             }
@@ -140,8 +160,7 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
                     price = price,
                     quantity = quantity,
                     unit = unit,
-                    pricePerUnit = calculatedPricePerUnit,
-                    timestamp = System.currentTimeMillis()
+                    pricePerUnit = calculatedPricePerUnit
                 ))
             } else {
                 val newEntry = PriceEntry(
@@ -150,8 +169,7 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
                     price = price,
                     quantity = quantity,
                     unit = unit,
-                    pricePerUnit = calculatedPricePerUnit,
-                    timestamp = System.currentTimeMillis()
+                    pricePerUnit = calculatedPricePerUnit
                 )
                 priceDao.insertItem(newEntry)
             }

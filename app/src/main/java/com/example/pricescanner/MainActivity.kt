@@ -7,18 +7,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -50,6 +49,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: PriceViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install the splash screen before calling super.onCreate()
+        installSplashScreen()
+        
         super.onCreate(savedInstanceState)
 
         viewModel = ViewModelProvider(this)[PriceViewModel::class.java]
@@ -160,21 +162,50 @@ fun StoreInputDialog(viewModel: PriceViewModel) {
 
         AlertDialog(
             onDismissRequest = { },
-            title = { Text("Welcome! Which store are you in?") },
-            text = {
-                TextField(
-                    value = tempInput,
-                    onValueChange = { tempInput = it },
-                    placeholder = { Text("e.g. Walmart, Costco") },
-                    singleLine = true
-                )
-            },
             confirmButton = {
                 Button(
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = tempInput.isNotBlank(),
                     onClick = { viewModel.setStore(tempInput) }
                 ) {
                     Text("Start Scanning")
+                }
+            },
+            title = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "App Logo",
+                        modifier = Modifier
+                            .size(120.dp)
+                            .padding(bottom = 16.dp)
+                    )
+                    Text(
+                        text = "Price Scanner",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Track and compare prices across stores effortlessly.",
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    OutlinedTextField(
+                        value = tempInput,
+                        onValueChange = { tempInput = it },
+                        label = { Text("Enter Store Name") },
+                        placeholder = { Text("e.g. Walmart, Costco") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         )

@@ -158,7 +158,7 @@ fun ManualEntryScreen(
                 Text("Prices in other stores:", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                 Column(modifier = Modifier.padding(top = 8.dp)) {
                     otherStorePrices.take(3).forEach { entry ->
-                        val formattedUnitPrice = String.format(Locale.US, "%.2f", entry.pricePerUnit)
+                        val displayPrice = viewModel.getDisplayNormalizedPrice(entry.pricePerUnit, entry.unit)
                         val entryTime = DateUtils.getRelativeTimeSpanString(
                             entry.timestamp,
                             System.currentTimeMillis(),
@@ -171,7 +171,7 @@ fun ManualEntryScreen(
                                 Text(entryTime, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                             }
                             Text(
-                                text = "$$formattedUnitPrice/${entry.unit}",
+                                text = displayPrice,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold
                             )

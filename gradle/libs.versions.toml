@@ -11,6 +11,8 @@ activityCompose = "1.9.1"
 composeBom = "2024.09.00"
 navigationCompose = "2.8.5"
 room = "2.6.1"
+coreSplashScreen = "1.0.1"
+material = "1.12.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +33,8 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashScreen" }
+google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 # ML Kit Barcode Scanning
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version = "17.3.0" }
 
