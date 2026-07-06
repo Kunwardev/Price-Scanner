@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class PriceViewModel(application: Application) : AndroidViewModel(application) {
     private val database = AppDatabase.getDatabase(application)
@@ -135,14 +136,16 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
             if (existing != null) {
                 priceDao.updateItem(existing.copy(
                     price = priceValue, 
-                    pricePerUnit = priceValue
+                    pricePerUnit = priceValue,
+                    timestamp = System.currentTimeMillis()
                 ))
             } else {
                 val newEntry = PriceEntry(
                     itemName = itemName,
                     storeName = currentStoreName.ifBlank { "Unknown Store" },
                     price = priceValue,
-                    pricePerUnit = priceValue
+                    pricePerUnit = priceValue,
+                    timestamp = System.currentTimeMillis()
                 )
                 priceDao.insertItem(newEntry)
             }
@@ -160,7 +163,8 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
                     price = price,
                     quantity = quantity,
                     unit = unit,
-                    pricePerUnit = calculatedPricePerUnit
+                    pricePerUnit = calculatedPricePerUnit,
+                    timestamp = System.currentTimeMillis()
                 ))
             } else {
                 val newEntry = PriceEntry(
@@ -169,7 +173,8 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
                     price = price,
                     quantity = quantity,
                     unit = unit,
-                    pricePerUnit = calculatedPricePerUnit
+                    pricePerUnit = calculatedPricePerUnit,
+                    timestamp = System.currentTimeMillis()
                 )
                 priceDao.insertItem(newEntry)
             }
@@ -186,6 +191,39 @@ class PriceViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteEntry(entry: PriceEntry) {
         viewModelScope.launch(Dispatchers.IO) {
             priceDao.deleteItem(entry)
+        }
+    }
+
+    fun getNormalizedPrice(pricePerUnit: Double, unit: String): Pair<Double, String> {
+        return when (unit.lowercase()) {
+            "oz" -> (pricePerUnit / 28.3495) to "g"
+            "lb" -> (pricePerUnit / 453.592) to "g"
+            "kg" -> (pricePerUnit / 1000.0) to "g"
+            "g" -> pricePerUnit to "g"
+            "l" -> (pricePerUnit / 1000.0) to "ml"
+            "ml" -> pricePerUnit to "ml"
+            else -> pricePerUnit to unit
+        }
+    }
+
+    fun getDisplayNormalizedPrice(pricePerUnit: Double, unit: String): String {
+        val normalized = getNormalizedPrice(pricePerUnit, unit)
+        val normalizedPrice = normalized.first
+        val baseUnit = normalized.second
+        
+        return when (baseUnit) {
+            "g" -> {
+                val formatted = String.format(Locale.US, "%.2f", normalizedPrice * 100)
+                "$$formatted/100g"
+            }
+            "ml" -> {
+                val formatted = String.format(Locale.US, "%.2f", normalizedPrice * 100)
+                "$$formatted/100ml"
+            }
+            else -> {
+                val formatted = String.format(Locale.US, "%.2f", pricePerUnit)
+                "$$formatted/$unit"
+            }
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.example.pricescanner.ui.camera
 
-import android.text.format.DateUtils
 import android.util.Log
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
@@ -9,13 +8,36 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +58,7 @@ fun CameraScreen(
     onNavigateToManual: () -> Unit,
     onNavigateToBarcode: () -> Unit,
     onNavigateToHistory: () -> Unit,
+    onNavigateToShoppingList: () -> Unit,
     onNavigateToComparison: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -95,14 +118,9 @@ fun CameraScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     if (existingInStore != null) {
-                        val relativeTime = DateUtils.getRelativeTimeSpanString(
-                            existingInStore!!.timestamp,
-                            System.currentTimeMillis(),
-                            DateUtils.MINUTE_IN_MILLIS
-                        ).toString()
-                        
+                        val priceString = String.format(Locale.US, "%.2f", existingInStore!!.price)
                         Text(
-                            text = "Last seen here ($relativeTime): \$${String.format(Locale.US, "%.2f", existingInStore!!.price)}",
+                            text = "Last seen here: $$priceString",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -126,20 +144,10 @@ fun CameraScreen(
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                         Text("Prices in other stores:", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                         otherStoresPrice.take(3).forEach { entry ->
-                            val entryTime = DateUtils.getRelativeTimeSpanString(
-                                entry.timestamp,
-                                System.currentTimeMillis(),
-                                DateUtils.MINUTE_IN_MILLIS
-                            ).toString()
-                            
-                            val displayPrice = viewModel.getDisplayNormalizedPrice(entry.pricePerUnit, entry.unit)
-
+                            val otherPrice = String.format(Locale.US, "%.2f", entry.price)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(entry.storeName, style = MaterialTheme.typography.bodySmall)
-                                    Text(entryTime, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                                }
-                                Text(displayPrice, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                Text(entry.storeName, style = MaterialTheme.typography.bodySmall)
+                                Text("$$otherPrice", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -154,13 +162,23 @@ fun CameraScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FloatingActionButton(onClick = onNavigateToHistory, containerColor = MaterialTheme.colorScheme.primaryContainer) {
-                Icon(Icons.Default.List, contentDescription = "History")
+            // Shopping List FAB
+            FloatingActionButton(
+                onClick = onNavigateToShoppingList,
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(Icons.Default.ShoppingCart, contentDescription = "Shopping List")
             }
+
+            FloatingActionButton(onClick = onNavigateToHistory, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+                Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History")
+            }
+            
             FloatingActionButton(onClick = onNavigateToBarcode, containerColor = MaterialTheme.colorScheme.tertiaryContainer) {
                 Icon(Icons.Default.Search, contentDescription = "Scan SKU")
             }
-            FloatingActionButton(onClick = onNavigateToManual, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+            
+            FloatingActionButton(onClick = onNavigateToManual) {
                 Icon(Icons.Default.Edit, contentDescription = "Manual Entry")
             }
         }

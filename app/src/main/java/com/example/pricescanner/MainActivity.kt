@@ -29,6 +29,7 @@ import com.example.pricescanner.ui.camera.CameraScreen
 import com.example.pricescanner.ui.history.ComparisonScreen
 import com.example.pricescanner.ui.history.HistoryScreen
 import com.example.pricescanner.ui.manual.ManualEntryScreen
+import com.example.pricescanner.ui.shopping.ShoppingListScreen
 import com.example.pricescanner.ui.theme.PriceScannerTheme
 import com.example.pricescanner.viewmodel.PriceViewModel
 
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
         object Camera : Screen("camera_screen")
         object Barcode : Screen("barcode_screen")
         object History : Screen("history_screen")
+        object ShoppingList : Screen("shopping_list_screen")
         object Manual : Screen("manual_screen?name={name}") {
             fun createRoute(name: String = "") = "manual_screen?name=$name"
         }
@@ -92,6 +94,7 @@ fun AppNavigation(viewModel: PriceViewModel) {
                 onNavigateToManual = { navController.navigate(MainActivity.Screen.Manual.createRoute()) },
                 onNavigateToBarcode = { navController.navigate(MainActivity.Screen.Barcode.route) },
                 onNavigateToHistory = { navController.navigate(MainActivity.Screen.History.route) },
+                onNavigateToShoppingList = { navController.navigate(MainActivity.Screen.ShoppingList.route) },
                 onNavigateToComparison = { itemName ->
                     navController.navigate(MainActivity.Screen.Comparison.createRoute(itemName))
                 }
@@ -105,6 +108,13 @@ fun AppNavigation(viewModel: PriceViewModel) {
                 onItemClick = { itemName ->
                     navController.navigate(MainActivity.Screen.Comparison.createRoute(itemName))
                 }
+            )
+        }
+
+        composable(MainActivity.Screen.ShoppingList.route) {
+            ShoppingListScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -133,6 +143,7 @@ fun AppNavigation(viewModel: PriceViewModel) {
             BarcodeScannerScreen(
                 viewModel = viewModel,
                 onProductFound = { name ->
+                    // Jump to Manual entry with the name pre-filled
                     navController.navigate(MainActivity.Screen.Manual.createRoute(name)) {
                         popUpTo(MainActivity.Screen.Barcode.route) { inclusive = true }
                     }
